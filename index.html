@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dice Roller</title>
+<style>
+  :root{
+    --bg-top: #1b1220;
+    --bg-bottom: #2c1a2e;
+    --die: #f4ede1;
+    --die-shadow: #c9bca4;
+    --pip: #241a2b;
+    --accent: #e0a458;
+    --accent-dim: #7a5230;
+    --accent-deep: #5c3a1e;
+    --btn-bg: #241a2b;
+    --btn-text: #f4ede1;
+    --die-size: 78px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  body {
+    background: radial-gradient(ellipse at top, var(--bg-bottom), var(--bg-top) 70%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--btn-text);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .header {
+    text-align: center;
+    padding: 18px 0 2px;
+    flex: 0 0 auto;
+  }
+
+  .header h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+
+  .stage {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1000px;
+    padding: 8px 18px;
+    min-height: 0;
+  }
+
+  .dice-tray {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 30px 34px;
+    max-width: 520px;
+  }
+
+  .die-slot {
+    width: var(--die-size);
+    height: var(--die-size);
+    perspective: 700px;
+    transition: width 0.25s ease, height 0.25s ease;
+  }
+
+  .die {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateX(-22deg) rotateY(28deg);
+  }
+
+  .die.rolling {
+    animation-name: tumble;
+    animation-duration: 0.9s;
+    animation-timing-function: cubic-bezier(0.24, 0.63, 0.32, 1);
+    animation-fill-mode: forwards;
+  }
+
+  @keyframes tumble {
+    0%   { transform: rotateX(var(--startX)) rotateY(var(--startY)); }
+    100% { transform: rotateX(var(--endX)) rotateY(var(--endY)); }
+  }
+
+  .face {
+    position: absolute;
+    width: var(--die-size);
+    height: var(--die-size);
+    background: linear-gradient(155deg, var(--die), var(--die-shadow));
+    border-radius: 16%;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 13%;
+    gap: 2px;
+  }
+
+  .pip {
+    width: 27%;
+    height: 27%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #3a2c44, var(--pip) 60%);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,0.5), 0 0.5px 0 rgba(255,255,255,0.15);
+    justify-self: center;
+    align-self: center;
+    opacity: 0;
+  }
+
+  .f1 { transform: translateZ(calc(var(--die-size) / 2)); }
+  .f2 { transform: rotateY(180deg) translateZ(calc(var(--die-size) / 2)); }
+  .f3 { transform: rotateY(90deg) translateZ(calc(var(--die-size) / 2)); }
+  .f4 { transform: rotateY(-90deg) translateZ(calc(var(--die-size) / 2)); }
+  .f5 { transform: rotateX(90deg) translateZ(calc(var(--die-size) / 2)); }
+  .f6 { transform: rotateX(-90deg) translateZ(calc(var(--die-size) / 2)); }
+
+  .p1 { grid-area: 1 / 1; } .p2 { grid-area: 1 / 2; } .p3 { grid-area: 1 / 3; }
+  .p4 { grid-area: 2 / 1; } .p5 { grid-area: 2 / 2; } .p6 { grid-area: 2 / 3; }
+  .p7 { grid-area: 3 / 1; } .p8 { grid-area: 3 / 2; } .p9 { grid-area: 3 / 3; }
+
+  .show { opacity: 1; }
+
+  .result-stage {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 600px;
+    height: 64px;
+  }
+
+  .result-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transform: rotateX(20deg);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .result-card.show { opacity: 1; }
+
+  .result-card.pop {
+    animation: pop-in 0.4s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+
+  @keyframes pop-in {
+    0%   { transform: rotateX(55deg) translateY(6px) scale(0.85); }
+    100% { transform: rotateX(20deg) translateY(0) scale(1); }
+  }
+
+  .result-total {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+    text-shadow:
+      0 1px 0 var(--accent-dim),
+      0 2px 0 var(--accent-dim),
+      0 3px 3px rgba(0,0,0,0.45);
+  }
+
+  .result-breakdown {
+    display: flex;
+    gap: 6px;
+  }
+
+  .mini-die {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    background: linear-gradient(155deg, var(--die), var(--die-shadow));
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 3px;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4);
+  }
+
+  .mini-pip {
+    width: 4.5px;
+    height: 4.5px;
+    border-radius: 50%;
+    background: var(--pip);
+    box-shadow: inset 0 0.5px 0.5px rgba(0,0,0,0.5);
+    justify-self: center;
+    align-self: center;
+    opacity: 0;
+  }
+
+  .controls {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 10px 24px 4px;
+  }
+
+  .stepper-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    font-size: 24px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    transition: transform 0.08s, opacity 0.15s;
+  }
+
+  .stepper-btn:active { transform: scale(0.92); }
+  .stepper-btn:disabled { opacity: 0.35; }
+
+  .count-label {
+    min-width: 64px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--btn-text);
+    opacity: 0.75;
+  }
+
+  .count-label span {
+    display: block;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .roll-row {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+    padding: 6px 24px calc(22px + env(safe-area-inset-bottom));
+  }
+
+  .roll-btn {
+    border: none;
+    background: linear-gradient(155deg, var(--accent), var(--accent-dim));
+    color: #241a2b;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.03em;
+    padding: 15px 34px;
+    border-radius: 999px;
+    box-shadow: 0 6px 16px rgba(224,164,88,0.35);
+    transition: transform 0.08s;
+  }
+
+  .roll-btn:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Roll the Dice</h1>
+  </div>
+
+  <div class="stage">
+    <div class="dice-tray" id="tray"></div>
+  </div>
+
+  <div class="result-stage">
+    <div class="result-card" id="resultCard">
+      <div class="result-total" id="resultTotal">–</div>
+      <div class="result-breakdown" id="resultBreakdown"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="stepper-btn" id="minusBtn" aria-label="Remove a die">−</button>
+    <div class="count-label">Dice<span id="countText">2</span></div>
+    <button class="stepper-btn" id="plusBtn" aria-label="Add a die">+</button>
+  </div>
+
+  <div class="roll-row">
+    <button class="roll-btn" id="rollBtn">ROLL</button>
+  </div>
+
+<script>
+  const MIN_DICE = 1;
+  const MAX_DICE = 5;
+  let diceCount = 2;
+
+  const tray = document.getElementById('tray');
+  const countText = document.getElementById('countText');
+  const minusBtn = document.getElementById('minusBtn');
+  const plusBtn = document.getElementById('plusBtn');
+  const rollBtn = document.getElementById('rollBtn');
+  const resultCard = document.getElementById('resultCard');
+  const resultTotal = document.getElementById('resultTotal');
+  const resultBreakdown = document.getElementById('resultBreakdown');
+
+  const sizeByCount = { 1: 100, 2: 90, 3: 82, 4: 72, 5: 64 };
+
+  const faceRotations = {
+    1: { x: 0,   y: 0   },
+    2: { x: 0,   y: 180 },
+    3: { x: 0,   y: -90 },
+    4: { x: 0,   y: 90  },
+    5: { x: -90, y: 0   },
+    6: { x: 90,  y: 0   }
+  };
+
+  const pipLayouts = {
+    1: [5],
+    2: [1,9],
+    3: [1,5,9],
+    4: [1,3,7,9],
+    5: [1,3,5,7,9],
+    6: [1,3,4,6,7,9]
+  };
+
+  function buildFace(value, pipClass){
+    const face = document.createElement('div');
+    face.className = 'face';
+    for (let i = 1; i <= 9; i++){
+      const pip = document.createElement('div');
+      pip.className = (pipClass || 'pip') + ' p' + i;
+      if (pipLayouts[value].includes(i)) pip.classList.add('show');
+      face.appendChild(pip);
+    }
+    return face;
+  }
+
+  function createDie(){
+    const slot = document.createElement('div');
+    slot.className = 'die-slot';
+    const die = document.createElement('div');
+    die.className = 'die';
+    const faceClasses = ['f1','f2','f3','f4','f5','f6'];
+    faceClasses.forEach((cls, idx) => {
+      const face = buildFace(idx + 1);
+      face.classList.add(cls);
+      die.appendChild(face);
+    });
+    slot.appendChild(die);
+    // track current resting rotation so future spins start smoothly from here
+    die.dataset.curX = -22;
+    die.dataset.curY = 28;
+    return slot;
+  }
+
+  function applyDieSize(){
+    const size = sizeByCount[diceCount] || 78;
+    document.documentElement.style.setProperty('--die-size', size + 'px');
+  }
+
+  function renderTray(){
+    applyDieSize();
+    tray.innerHTML = '';
+    for (let i = 0; i < diceCount; i++){
+      tray.appendChild(createDie());
+    }
+    updateCountUI();
+  }
+
+  function updateCountUI(){
+    countText.textContent = diceCount;
+    minusBtn.disabled = diceCount <= MIN_DICE;
+    plusBtn.disabled = diceCount >= MAX_DICE;
+  }
+
+  minusBtn.addEventListener('click', () => {
+    if (diceCount > MIN_DICE){
+      diceCount--;
+      renderTray();
+      hideResult();
+    }
+  });
+
+  plusBtn.addEventListener('click', () => {
+    if (diceCount < MAX_DICE){
+      diceCount++;
+      renderTray();
+      hideResult();
+    }
+  });
+
+  function hideResult(){
+    resultCard.classList.remove('show', 'pop');
+  }
+
+  function buildMiniDie(value){
+    const mini = document.createElement('div');
+    mini.className = 'mini-die';
+    for (let i = 1; i <= 9; i++){
+      const pip = document.createElement('div');
+      pip.className = 'mini-pip p' + i;
+      if (pipLayouts[value].includes(i)) pip.classList.add('show');
+      mini.appendChild(pip);
+    }
+    return mini;
+  }
+
+  function rollDice(){
+    rollBtn.disabled = true;
+    hideResult();
+    const dice = tray.querySelectorAll('.die');
+    const results = [];
+    let maxDuration = 0;
+
+    dice.forEach((die, i) => {
+      const value = Math.floor(Math.random() * 6) + 1;
+      results.push(value);
+
+      const rot = faceRotations[value];
+      const startX = parseFloat(die.dataset.curX);
+      const startY = parseFloat(die.dataset.curY);
+
+      // land on a normalized multiple of 360 above the start, plus a little
+      // per-die variation, so every die spins a believable, non-identical amount
+      const spins = 2 + (i % 2);
+      const endX = rot.x + spins * 360 * (i % 2 === 0 ? 1 : 1);
+      const endY = rot.y + spins * 360;
+
+      die.style.setProperty('--startX', startX + 'deg');
+      die.style.setProperty('--startY', startY + 'deg');
+      die.style.setProperty('--endX', endX + 'deg');
+      die.style.setProperty('--endY', endY + 'deg');
+
+      const delay = i * 45;
+      const duration = 900 + delay;
+      maxDuration = Math.max(maxDuration, duration);
+
+      die.classList.remove('rolling');
+      die.style.animationDelay = delay + 'ms';
+      void die.offsetWidth;
+      die.classList.add('rolling');
+
+      die.addEventListener('animationend', function handler(){
+        die.style.transform = `rotateX(${rot.x}deg) rotateY(${rot.y}deg)`;
+        die.classList.remove('rolling');
+        die.style.animationDelay = '0ms';
+        // normalize stored rotation to keep numbers from growing unbounded
+        die.dataset.curX = rot.x;
+        die.dataset.curY = rot.y;
+        die.removeEventListener('animationend', handler);
+      });
+    });
+
+    setTimeout(() => {
+      rollBtn.disabled = false;
+      const total = results.reduce((a,b) => a+b, 0);
+
+      resultTotal.textContent = total;
+      resultBreakdown.innerHTML = '';
+      if (results.length > 1){
+        results.forEach(v => resultBreakdown.appendChild(buildMiniDie(v)));
+      }
+
+      resultCard.classList.add('show', 'pop');
+    }, maxDuration + 40);
+  }
+
+  rollBtn.addEventListener('click', rollDice);
+
+  renderTray();
+</script>
+
+</body>
+</html>
